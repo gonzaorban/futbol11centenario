@@ -481,6 +481,7 @@ dialog input[type=text]{
   max-height:90dvh;
   display:flex;
   flex-direction:column;
+  min-height:0;
   padding:16px;
 }
 .modal-hdr{
@@ -497,8 +498,10 @@ dialog input[type=text]{
 
 /* Chat feed */
 .chat-scroll{
-  flex:1;
+  flex:1 1 auto;
+  min-height:120px;
   overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
   max-height:48dvh;
   display:flex;
   flex-direction:column;
