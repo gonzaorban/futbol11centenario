@@ -1,0 +1,13 @@
+{
+  "name": "futbol11centenario",
+  "private": true,
+  "scripts": {
+    "test": "node tests/browser.cjs",
+    "test:database": "node tests/database.cjs",
+    "preview": "node tools/preview.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "playwright": "1.62.1"
+  }
+}
