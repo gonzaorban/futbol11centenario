@@ -41,6 +41,10 @@ async function createBackend(){
     if(name==='admin_delete_chat_message'){
       return (await db.query('select public.admin_delete_chat_message($1,$2) as ok',[args.msg_id||null,args.admin_pass])).rows;
     }
+    if(name==='admin_save_centenario_player'){
+      const params=[args.admin_pass,args.source_team,args.source_pos,args.target_team,args.target_pos,args.player_name,args.player_photo,args.captain];
+      return (await db.query(`select * from public.admin_save_centenario_player(${params.map((_,i)=>'$'+(i+1)).join(',')})`,params)).rows;
+    }
     const params=name==='save_centenario_player'?
       [args.source_team,args.source_pos,args.target_team,args.target_pos,args.player_name,args.player_photo,args.captain]:
       [args.bet_id,args.user_label,args.prediction,args.goals,args.scorer_name,args.yellow_name,args.chips];

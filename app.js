@@ -787,6 +787,7 @@ function openAdminModal(){
   setFeedback("admin-dash-feedback","");
   updateAdminBadge();
   if(logged){
+    setAdminTab("chat");
     renderAdminDashboard();
   }else{
     $("admin-inp-user").value="";
@@ -794,6 +795,16 @@ function openAdminModal(){
     setTimeout(()=>$("admin-inp-user").focus(),50);
   }
   $("dlg-admin").showModal();
+}
+
+function setAdminTab(tab){
+  $("admin-tab-chat").classList.toggle("on",tab==="chat");
+  $("admin-tab-chat").setAttribute("aria-selected",String(tab==="chat"));
+  $("admin-tab-players").classList.toggle("on",tab==="players");
+  $("admin-tab-players").setAttribute("aria-selected",String(tab==="players"));
+  $("admin-panel-chat").style.display=tab==="chat"?"block":"none";
+  $("admin-panel-players").style.display=tab==="players"?"block":"none";
+  if(tab==="players")renderAdminPlayers();
 }
 
 function loginAdmin(){
@@ -805,6 +816,7 @@ function loginAdmin(){
     $("admin-dashboard-view").style.display="block";
     updateAdminBadge();
     renderChat();
+    setAdminTab("chat");
     renderAdminDashboard();
     setFeedback("admin-feedback","");
   }else{
@@ -858,6 +870,141 @@ function renderAdminDashboard(){
     list.append(card);
   });
 }
+
+// ---- Edición de jugadores desde el panel de admin ----
+function getAllSlots(){
+  const slots=[];
+  for(let t=0;t<2;t++){
+    for(let i=0;i<11;i++)slots.push({t,i,p:S[t][i],tag:`Equipo ${t+1} · ${POS[i]}`});
+    for(let s=0;s<5;s++)slots.push({t,i:11+s,p:subs[t][s],tag:`Equipo ${t+1} · Suplente ${s+1}`});
+  }
+  slots.push({t:2,i:0,p:referee,tag:"Árbitro oficial"});
+  return slots;
+}
+
+function renderAdminPlayers(){
+  const list=$("admin-players-list");
+  if(!list)return;
+  const query=($("admin-players-search")?.value||"").trim().toLowerCase();
+  const slots=getAllSlots().filter(({p})=>!query||(p.n||"").toLowerCase().includes(query));
+  if(!slots.length){
+    list.innerHTML=`<div style="text-align:center;color:#899b82;padding:24px 10px;font-size:12px">No se encontraron jugadores con ese criterio.</div>`;
+    return;
+  }
+  list.innerHTML=slots.map(({t,i,p,tag})=>{
+    const avatarStyle=p.f?`style="background-image:url(&quot;${escapeHtml(safePhoto(p.f))}&quot;)"`:"";
+    const initials=p.f?"":(p.n?escapeHtml(p.n.slice(0,2).toUpperCase()):"+");
+    return `<button type="button" class="admin-player-card" data-team="${t}" data-pos="${i}">
+      <span class="admin-player-av" ${avatarStyle}>${initials}</span>
+      <span class="admin-player-info">
+        <span class="admin-player-name ${p.n?"":"e"}">${escapeHtml(p.n)||"Lugar libre"}${p.c?' <b style="color:var(--gold)">C</b>':""}</span>
+        <span class="admin-player-tag">${tag}</span>
+      </span>
+      <span class="admin-player-arrow">✎</span>
+    </button>`;
+  }).join("");
+  list.querySelectorAll(".admin-player-card").forEach(card=>{
+    card.onclick=()=>openAdminPlayerModal(Number(card.dataset.team),Number(card.dataset.pos));
+  });
+}
+
+let adminPlayerCur=null,adminPlayerPhoto="";
+
+function openAdminPlayerModal(t,i){
+  adminPlayerCur=[t,i];
+  const p=getSlotData(t,i);
+  adminPlayerPhoto=p.f||"";
+  $("admin-player-pre").style.backgroundImage=adminPlayerPhoto?`url(${JSON.stringify(safePhoto(adminPlayerPhoto))})`:"none";
+  $("admin-player-inp").value=p.n||"";
+  setFeedback("admin-player-error","");
+
+  if(t===2){
+    $("admin-player-title").textContent="⚖️ Árbitro oficial";
+    $("admin-player-lbl-pos").style.display="none";
+    $("admin-player-mv").style.display="none";
+  }else{
+    const baseTitle=i>=11?`Equipo ${t+1} · Suplente ${i-10}`:`Equipo ${t+1} · ${POS[i]}`;
+    $("admin-player-title").textContent=baseTitle;
+    $("admin-player-lbl-pos").style.display="block";
+    $("admin-player-mv").style.display="block";
+    let opts="";
+    [0,1].forEach(k=>{
+      opts+=`<optgroup label="Equipo ${k+1} - Titulares">`;
+      PN.forEach((n,j)=>{
+        const sel=(k===t&&j===i)?"selected":"";
+        const name=S[k][j].n?` (${S[k][j].n})`:"";
+        opts+=`<option value="${k}_${j}" ${sel}>Eq ${k+1} · ${n}${escapeHtml(name)}</option>`;
+      });
+      opts+=`</optgroup><optgroup label="Equipo ${k+1} - Suplentes">`;
+      for(let s=0;s<5;s++){
+        const j=11+s;
+        const sel=(k===t&&j===i)?"selected":"";
+        const name=subs[k][s].n?` (${subs[k][s].n})`:"";
+        opts+=`<option value="${k}_${j}" ${sel}>Eq ${k+1} · Suplente ${s+1}${escapeHtml(name)}</option>`;
+      }
+      opts+=`</optgroup>`;
+    });
+    $("admin-player-mv").innerHTML=opts;
+  }
+
+  $("dlg-admin-player").showModal();
+}
+
+$("admin-player-fb").onclick=()=>$("admin-player-file").click();
+$("admin-player-file").onchange=e=>{
+  const f=e.target.files[0];e.target.value="";
+  if(!f)return;
+  if(!f.type.startsWith("image/") || f.size>15*1024*1024){setFeedback("admin-player-error","Elegí una imagen de hasta 15 MB.");return}
+  const image=new Image(),url=URL.createObjectURL(f),editing=adminPlayerCur?.join("_");
+  $("admin-player-save").disabled=true;setFeedback("admin-player-error","Preparando foto…");
+  const done=()=>{URL.revokeObjectURL(url);$("admin-player-save").disabled=false};
+  image.onload=()=>{
+    try{
+      if(adminPlayerCur?.join("_")!==editing)return;
+      const canvas=document.createElement("canvas"),size=canvas.width=canvas.height=320;
+      const crop=Math.min(image.width,image.height);
+      canvas.getContext("2d").drawImage(image,(image.width-crop)/2,(image.height-crop)/2,crop,crop,0,0,size,size);
+      adminPlayerPhoto=canvas.toDataURL("image/jpeg",.85);
+      $("admin-player-pre").style.backgroundImage=`url(${JSON.stringify(safePhoto(adminPlayerPhoto))})`;
+      setFeedback("admin-player-error","");
+    }catch{setFeedback("admin-player-error","No se pudo leer la foto. Probá con un JPG o PNG.")}finally{done()}
+  };
+  image.onerror=()=>{setFeedback("admin-player-error","No se pudo leer la foto. Probá con un JPG o PNG.");done()};
+  image.src=url;
+};
+
+async function putPlayerAdmin(t,i,n,f){
+  await requireShared("players");
+  const [t2,i2]=t===2?[2,0]:$("admin-player-mv").value.split("_").map(Number);
+  const uploaded=await uploadPhoto(f||"");
+  const captain=(t===2)?false:!!getSlotData(t,i).c;
+  const {data,error}=await db.rpc("admin_save_centenario_player",{
+    admin_pass:ADMIN_PASS,source_team:t,source_pos:i,target_team:t2,target_pos:i2,
+    player_name:n,player_photo:uploaded||null,captain
+  });
+  if(error)throw new Error(backendError(error));
+  if(!Array.isArray(data)||!data.length)throw new Error("La base no confirmó el cambio. Actualizá los datos y volvé a intentar.");
+  stateRevision++;
+  replacePlayers(data);refreshViews();renderAdminPlayers();
+  $("dlg-admin-player").close();notifyUser("Jugador actualizado por el admin.");
+  broadcast("player_extra",{team:t2,pos:i2});
+}
+
+$("admin-player-save").onclick=async()=>{
+  if($("admin-player-save").disabled)return;
+  const n=$("admin-player-inp").value.trim().slice(0,20);
+  if(!n){setFeedback("admin-player-error","Ingresá un nombre para guardar.");$("admin-player-inp").focus();return}
+  $("admin-player-save").disabled=true;$("admin-player-save").textContent="Guardando…";setFeedback("admin-player-error","");
+  try{await putPlayerAdmin(adminPlayerCur[0],adminPlayerCur[1],n,adminPlayerPhoto)}
+  catch(error){setFeedback("admin-player-error",error.message)}
+  finally{$("admin-player-save").disabled=false;$("admin-player-save").textContent="Guardar"}
+};
+$("admin-player-cls").onclick=()=>$("dlg-admin-player").close();
+$("admin-player-close").onclick=()=>$("dlg-admin-player").close();
+
+$("admin-tab-chat").onclick=()=>setAdminTab("chat");
+$("admin-tab-players").onclick=()=>setAdminTab("players");
+$("admin-players-search").oninput=renderAdminPlayers;
 
 async function adminDeleteMessage(msgId){
   if(!isAdmin()||!msgId)return;
