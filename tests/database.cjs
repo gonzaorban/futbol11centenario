@@ -45,6 +45,9 @@ async function runDatabaseTests(){
     await backend.asOwner(tokenA,d=>d.query('insert into chat_messages(id,author,text,owner) values($1,$2,$3,$4)',[chatId,'Ivo','Llegamos a las 16:45',hash(tokenB)]));
     assert.equal((await db.query('select owner from chat_messages where id=$1',[chatId])).rows[0].owner,hash(tokenA),'Chat stamps real owner');
     assert.equal((await backend.asOwner(tokenB,d=>d.query('delete from chat_messages where id=$1 returning *',[chatId]))).rows.length,0);
+    await assert.rejects(()=>rpc('admin_delete_chat_message',{msg_id:chatId,admin_pass:'incorrecta'},tokenB),/Contraseña de administrador incorrecta/);
+    await rpc('admin_delete_chat_message',{msg_id:chatId,admin_pass:'centenarioutn412'},tokenB);
+    assert.equal((await db.query('select count(*)::int as n from chat_messages where id=$1',[chatId])).rows[0].n,0,'Admin deleted chat message');
     await assert.rejects(()=>rpc('save_centenario_bet',bet,''),/Acceso inválido/);
     console.log('Database: migrations, ownership, atomic moves, captain, IDs, bets, rollback and chat passed.');
   }finally{await db.close()}

@@ -191,7 +191,7 @@ function startRealtime(){
     db.channel(table+'_ch').on('postgres_changes',{event:'*',schema:'public',table},scheduleSync).subscribe();
   }
   liveCh=db.channel('centenario_live',{config:{broadcast:{self:false}}});
-  for(const event of ['chat_msg','new_bet','del_bet','player_extra']){
+  for(const event of ['chat_msg','chat_msg_del','new_bet','del_bet','player_extra']){
     liveCh.on('broadcast',{event},handleLiveNotice);
   }
   liveCh.subscribe(status=>{if(status==='SUBSCRIBED')scheduleSync()});
@@ -702,12 +702,14 @@ function renderChat(){
   $("chat-badge").textContent=chatMessages.length;
   $("chat-badge").style.display="inline-block";
 
+  const adminActive=isAdmin();
   chatMessages.forEach(m=>{
     const item=document.createElement("div");
     const tClass=m.team===0?"t0":m.team===1?"t1":"t2";
     item.className=`chat-item ${tClass}`;
     const avHtml=m.photo?`<div class="chat-item-av" style="background-image:url(&quot;${escapeHtml(safePhoto(m.photo))}&quot;)"></div>`:`<div class="chat-item-av">${escapeHtml(m.author.slice(0,2).toUpperCase())}</div>`;
     const tagText=m.team===0?"Eq 1":m.team===1?"Eq 2":"Amigo";
+    const delBtnHtml=adminActive?`<button type="button" class="chat-item-del-btn" data-del-id="${escapeHtml(m.id)}" title="Borrar mensaje (Admin)">🗑️</button>`:'';
     item.innerHTML=`
       ${avHtml}
       <div class="chat-item-body">
@@ -715,12 +717,18 @@ function renderChat(){
           <span class="chat-item-user">${escapeHtml(m.author)}</span>
           <span class="chat-item-tag">${tagText}</span>
           <span class="chat-item-time">${formatRelativeTime(m.time)}</span>
+          ${delBtnHtml}
         </div>
         <div class="chat-item-text">${escapeHtml(m.text)}</div>
       </div>
     `;
     feed.append(item);
   });
+
+  feed.onclick=e=>{
+    const btn=e.target.closest('.chat-item-del-btn');
+    if(btn?.dataset.delId)void adminDeleteMessage(btn.dataset.delId);
+  };
 }
 
 function escapeHtml(s){
@@ -753,6 +761,167 @@ async function sendChatMessage(){
 
 $("chat-send").onclick=sendChatMessage;
 $("chat-inp-msg").onkeydown=e=>{if(e.key==="Enter")void sendChatMessage()};
+
+// ==================== PANEL DE ADMINISTRADOR ====================
+const ADMIN_USER="centenarioutn412";
+const ADMIN_PASS="centenarioutn412";
+
+function isAdmin(){
+  try{
+    return sessionStorage.getItem("f11_admin")==="true";
+  }catch{
+    return false;
+  }
+}
+
+function updateAdminBadge(){
+  const badge=$("admin-auth-badge");
+  if(badge)badge.style.display=isAdmin()?"inline-block":"none";
+}
+
+function openAdminModal(){
+  const logged=isAdmin();
+  $("admin-login-view").style.display=logged?"none":"block";
+  $("admin-dashboard-view").style.display=logged?"block":"none";
+  setFeedback("admin-feedback","");
+  setFeedback("admin-dash-feedback","");
+  updateAdminBadge();
+  if(logged){
+    renderAdminDashboard();
+  }else{
+    $("admin-inp-user").value="";
+    $("admin-inp-pass").value="";
+    setTimeout(()=>$("admin-inp-user").focus(),50);
+  }
+  $("dlg-admin").showModal();
+}
+
+function loginAdmin(){
+  const user=($("admin-inp-user").value||"").trim();
+  const pass=($("admin-inp-pass").value||"").trim();
+  if(user===ADMIN_USER && pass===ADMIN_PASS){
+    try{sessionStorage.setItem("f11_admin","true")}catch{}
+    $("admin-login-view").style.display="none";
+    $("admin-dashboard-view").style.display="block";
+    updateAdminBadge();
+    renderChat();
+    renderAdminDashboard();
+    setFeedback("admin-feedback","");
+  }else{
+    setFeedback("admin-feedback","Usuario o contraseña incorrectos.");
+  }
+}
+
+function logoutAdmin(){
+  try{sessionStorage.removeItem("f11_admin")}catch{}
+  $("admin-login-view").style.display="block";
+  $("admin-dashboard-view").style.display="none";
+  updateAdminBadge();
+  renderChat();
+  setFeedback("admin-feedback","");
+}
+
+function renderAdminDashboard(){
+  const list=$("admin-chat-list");
+  if(!list)return;
+  list.innerHTML="";
+  const total=chatMessages.length;
+  $("admin-chat-count-label").textContent=`${total} mensaje${total===1?"":"s"} en el vestuario`;
+
+  const query=($("admin-chat-search")?.value||"").trim().toLowerCase();
+  const filtered=chatMessages.filter(m=>{
+    if(!query)return true;
+    return (m.author||"").toLowerCase().includes(query)||(m.text||"").toLowerCase().includes(query);
+  });
+
+  if(!filtered.length){
+    list.innerHTML=`<div style="text-align:center;color:#899b82;padding:24px 10px;font-size:12px">${query?"No se encontraron mensajes con ese criterio.":"Todavía no hay mensajes en el chat."}</div>`;
+    return;
+  }
+
+  const sorted=[...filtered].reverse();
+  sorted.forEach(m=>{
+    const card=document.createElement("div");
+    card.className="admin-msg-card";
+    const tagText=m.team===0?"Equipo 1":m.team===1?"Equipo 2":"Amigo";
+    card.innerHTML=`
+      <div class="admin-msg-info">
+        <div class="admin-msg-top">
+          <span class="admin-msg-author">${escapeHtml(m.author)}</span>
+          <span class="admin-msg-team">${tagText}</span>
+          <span class="admin-msg-time">${formatRelativeTime(m.time)}</span>
+        </div>
+        <div class="admin-msg-body">${escapeHtml(m.text)}</div>
+      </div>
+      <button type="button" class="btn-msg-del" data-del-id="${escapeHtml(m.id)}" title="Borrar este mensaje">🗑️ Borrar</button>
+    `;
+    list.append(card);
+  });
+}
+
+async function adminDeleteMessage(msgId){
+  if(!isAdmin()||!msgId)return;
+  setFeedback("admin-dash-feedback","Borrando mensaje…");
+  try{
+    let deleted=false;
+    try{
+      const {error}=await db.rpc("admin_delete_chat_message",{msg_id:msgId,admin_pass:ADMIN_PASS});
+      if(!error)deleted=true;
+    }catch{}
+    if(!deleted && db){
+      const {error}=await db.from("chat_messages").delete().eq("id",msgId);
+      if(error && error.code!=="PGRST116")throw new Error(backendError(error));
+    }
+    chatMessages=chatMessages.filter(m=>m.id!==msgId);
+    saveChat();
+    refreshViews();
+    renderAdminDashboard();
+    broadcast("chat_msg_del",{id:msgId});
+    setFeedback("admin-dash-feedback","Mensaje borrado con éxito.",true);
+  }catch(error){
+    setFeedback("admin-dash-feedback",error.message||"No se pudo borrar el mensaje.");
+  }
+}
+
+async function adminDeleteAllMessages(){
+  if(!isAdmin())return;
+  if(!confirm("¿Estás seguro de que querés borrar TODOS los mensajes del vestuario?"))return;
+  setFeedback("admin-dash-feedback","Borrando todos los mensajes…");
+  try{
+    let deleted=false;
+    try{
+      const {error}=await db.rpc("admin_delete_chat_message",{msg_id:null,admin_pass:ADMIN_PASS});
+      if(!error)deleted=true;
+    }catch{}
+    if(!deleted && db){
+      const {error}=await db.from("chat_messages").delete().neq("id","00000000-0000-0000-0000-000000000000");
+      if(error)throw new Error(backendError(error));
+    }
+    chatMessages=[];
+    saveChat();
+    refreshViews();
+    renderAdminDashboard();
+    broadcast("chat_msg_del",{id:null});
+    setFeedback("admin-dash-feedback","Todos los mensajes fueron borrados.",true);
+  }catch(error){
+    setFeedback("admin-dash-feedback",error.message||"No se pudieron borrar los mensajes.");
+  }
+}
+
+$("btn-admin").onclick=openAdminModal;
+const footerAdmin=$("btn-footer-admin");
+if(footerAdmin)footerAdmin.onclick=openAdminModal;
+$("admin-close").onclick=()=>$("dlg-admin").close();
+$("admin-btn-login").onclick=()=>void loginAdmin();
+$("admin-btn-logout").onclick=logoutAdmin;
+$("admin-btn-clear-all").onclick=()=>void adminDeleteAllMessages();
+$("admin-chat-search").oninput=renderAdminDashboard;
+$("admin-inp-pass").onkeydown=e=>{if(e.key==="Enter")void loginAdmin()};
+$("admin-inp-user").onkeydown=e=>{if(e.key==="Enter")$("admin-inp-pass").focus()};
+$("admin-chat-list").onclick=e=>{
+  const btn=e.target.closest(".btn-msg-del");
+  if(btn?.dataset.delId)void adminDeleteMessage(btn.dataset.delId);
+};
 
 // ==================== APUESTAS & PRODE PERSONALIZADO ====================
 $("btn-bets").onclick=()=>openBetsModal();

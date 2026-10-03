@@ -167,10 +167,27 @@ create policy "chat borrar propio" on public.chat_messages for delete to anon us
 revoke update on public.chat_messages from anon,authenticated;
 grant select,insert,delete on public.chat_messages to anon;
 
+create or replace function public.admin_delete_chat_message(msg_id uuid, admin_pass text)
+returns boolean
+language plpgsql security definer set search_path = '' as $$
+begin
+  if admin_pass <> 'centenarioutn412' then
+    raise exception 'Contraseña de administrador incorrecta';
+  end if;
+  if msg_id is null then
+    delete from public.chat_messages;
+  else
+    delete from public.chat_messages where id = msg_id;
+  end if;
+  return true;
+end $$;
+
 revoke all on function public.save_centenario_player(integer,integer,integer,integer,text,text,boolean) from public;
 revoke all on function public.save_centenario_bet(uuid,text,text,text,text,text,integer) from public;
+revoke all on function public.admin_delete_chat_message(uuid,text) from public;
 grant execute on function public.save_centenario_player(integer,integer,integer,integer,text,text,boolean) to anon;
 grant execute on function public.save_centenario_bet(uuid,text,text,text,text,text,integer) to anon;
+grant execute on function public.admin_delete_chat_message(uuid,text) to anon;
 
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('fotos','fotos',true,2097152,array['image/jpeg'])

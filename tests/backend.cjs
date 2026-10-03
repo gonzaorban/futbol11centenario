@@ -38,6 +38,9 @@ async function createBackend(){
     }catch(error){await db.exec('rollback');throw error}
   });
   const rpc=(name,args,token)=>asOwner(token,async db=>{
+    if(name==='admin_delete_chat_message'){
+      return (await db.query('select public.admin_delete_chat_message($1,$2) as ok',[args.msg_id||null,args.admin_pass])).rows;
+    }
     const params=name==='save_centenario_player'?
       [args.source_team,args.source_pos,args.target_team,args.target_pos,args.player_name,args.player_photo,args.captain]:
       [args.bet_id,args.user_label,args.prediction,args.goals,args.scorer_name,args.yellow_name,args.chips];

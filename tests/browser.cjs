@@ -64,6 +64,9 @@ async function main(){
           if(req.method()==='POST'){
             const m=req.postDataJSON();
             rows=(await backend.asOwner(token,d=>d.query('insert into chat_messages(id,author,team,photo,text,owner) values($1,$2,$3,$4,$5,$6) returning *',[m.id,m.author,m.team,m.photo,m.text,m.owner]))).rows;
+          }else if(req.method()==='DELETE'){
+            const id=url.searchParams.get('id')?.slice(3);
+            rows=(await backend.run(async()=>(await backend.db.query('delete from chat_messages where id=$1 returning *',[id])).rows));
           }else{
             rows=await backend.run(async()=>(await backend.db.query('select * from chat_messages order by created_at desc limit 50')).rows);
           }
@@ -186,6 +189,20 @@ async function main(){
     await mobile.locator('#btn-chat').click();await mobile.locator('#chat-inp-name').fill('<b>Ivo</b>');await mobile.locator('#chat-inp-msg').fill('Nos vemos a las 16:45 ⚽');await mobile.locator('#chat-send').click();
     await mobile.waitForFunction(()=>document.querySelectorAll('.chat-item').length===1);assert.equal(await mobile.locator('.chat-item-user').textContent(),'<b>Ivo</b>');
     await mobile.locator('#chat-cls').click();await refresh(other);await other.locator('#btn-chat').click();assert.equal(await other.locator('.chat-item-text').textContent(),'Nos vemos a las 16:45 ⚽');await other.locator('#chat-cls').click();
+    // Panel de Admin: login con credenciales y borrado de mensajes del vestuario
+    await refresh(page);
+    await page.locator('#btn-admin').click();
+    await page.locator('#admin-inp-user').fill('wrong');await page.locator('#admin-inp-pass').fill('wrong');
+    await page.locator('#admin-btn-login').click();
+    await page.waitForFunction(()=>document.querySelector('#admin-feedback').textContent.includes('incorrectos'));
+    await page.locator('#admin-inp-user').fill('centenarioutn412');await page.locator('#admin-inp-pass').fill('centenarioutn412');
+    await page.locator('#admin-btn-login').click();
+    await page.waitForFunction(()=>document.querySelector('#admin-dashboard-view').style.display==='block');
+    assert.equal(await page.locator('#admin-chat-list .admin-msg-card').count(),1);
+    await page.locator('#admin-chat-list .btn-msg-del').click();
+    await page.waitForFunction(()=>document.querySelectorAll('#admin-chat-list .admin-msg-card').length===0);
+    assert.equal((await backend.db.query('select count(*)::int as n from chat_messages')).rows[0].n,0,'Message deleted from database');
+    await page.locator('#admin-close').click();
     // Borrado fallido conserva la boleta; un borrado confirmado quita solo la propia.
     await refresh(page);await page.locator('#btn-bets').click();backend.failDelete=true;
     await page.locator('.bet-del').click();await page.waitForFunction(()=>document.querySelector('#bet-feedback').textContent.includes('permiso'));

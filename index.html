@@ -8,7 +8,7 @@
 <div class="app-shell">
 <header class="topbar">
   <a class="brand" href="./" aria-label="Centenario, inicio"><span class="brand-mark">11</span><span>CENTENARIO<small>EL PARTIDO DE LOS PIBES</small></span></a>
-  <div class="topbar-actions"><button id="sync-status" class="sync-status" type="button" title="Actualizar datos compartidos">Conectando…</button><button id="btn-access" class="access-btn" type="button">Mi acceso ↗</button></div>
+  <div class="topbar-actions"><button id="sync-status" class="sync-status" type="button" title="Actualizar datos compartidos">Conectando…</button><button id="btn-admin" class="access-btn admin-btn" type="button" title="Panel de Administración">Admin 🔒</button><button id="btn-access" class="access-btn" type="button">Mi acceso ↗</button></div>
 </header>
 <main>
 <section class="hero">
@@ -71,7 +71,7 @@
   </div>
 </div>
 
-</main><footer class="site-footer"><span>CENTENARIO · FÚTBOL ENTRE AMIGOS</span><span>Nos vemos en la cancha. ⚽</span></footer></div>
+</main><footer class="site-footer"><span>CENTENARIO · FÚTBOL ENTRE AMIGOS</span><button id="btn-footer-admin" class="footer-admin-link" type="button">Admin 🔒</button><span>Nos vemos en la cancha. ⚽</span></footer></div>
 
 <!-- Modal Edición de Jugador / Suplente / Árbitro -->
 <dialog id="dlg">
@@ -324,6 +324,58 @@
   <hr><label for="access-code">¿Ya tenés un código?</label><input type="text" id="access-code" autocomplete="off" spellcheck="false" placeholder="Pegá tu código privado">
   <p class="form-help">Usá solo tu propio código. Al recuperarlo, este navegador pasa a usar ese acceso.</p><output id="access-feedback" class="form-feedback"></output>
   <button type="button" class="b no" id="access-restore">Recuperar mi acceso</button>
+</dialog>
+
+<!-- Modal Panel de Administración -->
+<dialog id="dlg-admin" class="modal-lg" aria-labelledby="admin-title">
+  <div class="modal-hdr">
+    <div class="admin-title-wrap">
+      <h3 id="admin-title">🛡️ Panel de Admin</h3>
+      <span id="admin-auth-badge" class="badge admin-active-badge" style="display:none">Admin Activo</span>
+    </div>
+    <button type="button" class="btn-close" id="admin-close" aria-label="Cerrar">✕</button>
+  </div>
+
+  <!-- Vista Login Admin -->
+  <div id="admin-login-view">
+    <p class="form-help">Ingresá tus credenciales de administrador para moderar el vestuario y borrar mensajes.</p>
+    <div class="form-grp">
+      <label for="admin-inp-user">Usuario</label>
+      <input type="text" id="admin-inp-user" autocomplete="username" spellcheck="false" placeholder="Usuario admin">
+    </div>
+    <div class="form-grp" style="margin-top:10px">
+      <label for="admin-inp-pass">Contraseña</label>
+      <input type="password" id="admin-inp-pass" autocomplete="current-password" placeholder="Contraseña admin">
+    </div>
+    <output id="admin-feedback" class="form-feedback"></output>
+    <button type="button" class="b ok" id="admin-btn-login" style="width:100%;margin-top:14px">Ingresar al Panel ↗</button>
+  </div>
+
+  <!-- Vista Panel de Control (Autenticado) -->
+  <div id="admin-dashboard-view" style="display:none">
+    <div class="admin-top-bar">
+      <div>
+        <div class="admin-status-text">Sesión de Administrador</div>
+        <div class="admin-status-sub" id="admin-chat-count-label">Cargando mensajes…</div>
+      </div>
+      <button type="button" class="b no" id="admin-btn-logout">Cerrar sesión</button>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-hdr">
+        <h4>💬 Mensajes del Vestuario</h4>
+        <button type="button" class="btn-clear-all" id="admin-btn-clear-all">Borrar todos</button>
+      </div>
+
+      <div class="admin-search-wrap">
+        <input type="text" id="admin-chat-search" placeholder="🔍 Buscar por autor o texto del mensaje...">
+      </div>
+
+      <output id="admin-dash-feedback" class="form-feedback"></output>
+
+      <div id="admin-chat-list" class="admin-chat-feed"></div>
+    </div>
+  </div>
 </dialog>
 <output id="toast" class="toast" aria-live="polite" hidden></output>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>
