@@ -388,7 +388,7 @@
       <p class="form-help">Cambiá el nombre, la foto o la posición de cualquier jugador. Para mover a alguien a un lugar ocupado, los dos jugadores intercambian su lugar.</p>
 
       <div class="admin-search-wrap">
-        <input type="text" id="admin-players-search" placeholder="🔍 Buscar jugador por nombre...">
+        <input type="text" id="admin-players-search" placeholder="🔍 Buscar jugador por nombre..." aria-label="Buscar jugador por nombre">
       </div>
 
       <output id="admin-players-feedback" class="form-feedback"></output>
@@ -402,12 +402,12 @@
 <dialog id="dlg-admin-player" aria-labelledby="admin-player-title">
   <div class="modal-hdr"><h3 id="admin-player-title">Editar jugador</h3><button type="button" class="btn-close" id="admin-player-close" aria-label="Cerrar">✕</button></div>
   <div class="pre" id="admin-player-pre"></div>
-  <input type="file" id="admin-player-file" accept="image/*" hidden>
+  <input type="file" id="admin-player-file" accept="image/*" aria-label="Foto del jugador" hidden>
   <button class="b no" id="admin-player-fb" type="button">📷 Foto</button>
   <input type="text" id="admin-player-inp" maxlength="20" placeholder="Nombre del jugador" aria-label="Nombre del jugador">
-  <label id="admin-player-lbl-pos" style="font-size:11px;color:#999;letter-spacing:1px">POSICIÓN</label>
-  <select id="admin-player-mv"></select>
-  <p id="admin-player-error" class="form-feedback" role="alert"></p>
+  <label id="admin-player-lbl-pos" for="admin-player-mv" style="font-size:11px;color:#999;letter-spacing:1px">POSICIÓN</label>
+  <select id="admin-player-mv" aria-label="Posición del jugador"></select>
+  <output id="admin-player-error" class="form-feedback"></output>
   <button type="button" class="b ok" id="admin-player-save">Guardar</button>
   <button class="b no" id="admin-player-cls">✕ Cerrar</button>
 </dialog>

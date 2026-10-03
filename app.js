@@ -893,7 +893,12 @@ function renderAdminPlayers(){
   }
   list.innerHTML=slots.map(({t,i,p,tag})=>{
     const avatarStyle=p.f?`style="background-image:url(&quot;${escapeHtml(safePhoto(p.f))}&quot;)"`:"";
-    const initials=p.f?"":(p.n?escapeHtml(p.n.slice(0,2).toUpperCase()):"+");
+    let initials="+";
+    if(p.f){
+      initials="";
+    }else if(p.n){
+      initials=escapeHtml(p.n.slice(0,2).toUpperCase());
+    }
     return `<button type="button" class="admin-player-card" data-team="${t}" data-pos="${i}">
       <span class="admin-player-av" ${avatarStyle}>${initials}</span>
       <span class="admin-player-info">
