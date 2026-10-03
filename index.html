@@ -361,7 +361,12 @@
       <button type="button" class="b no" id="admin-btn-logout">Cerrar sesión</button>
     </div>
 
-    <div class="admin-section">
+    <div class="admin-tabs" role="tablist" aria-label="Secciones del panel">
+      <button type="button" class="admin-tab on" id="admin-tab-chat" data-tab="chat" role="tab" aria-selected="true">💬 Vestuario</button>
+      <button type="button" class="admin-tab" id="admin-tab-players" data-tab="players" role="tab" aria-selected="false">⚽ Jugadores</button>
+    </div>
+
+    <div class="admin-section" id="admin-panel-chat">
       <div class="admin-section-hdr">
         <h4>💬 Mensajes del Vestuario</h4>
         <button type="button" class="btn-clear-all" id="admin-btn-clear-all">Borrar todos</button>
@@ -375,7 +380,36 @@
 
       <div id="admin-chat-list" class="admin-chat-feed"></div>
     </div>
+
+    <div class="admin-section" id="admin-panel-players" style="display:none">
+      <div class="admin-section-hdr">
+        <h4>⚽ Editar Jugadores</h4>
+      </div>
+      <p class="form-help">Cambiá el nombre, la foto o la posición de cualquier jugador. Para mover a alguien a un lugar ocupado, los dos jugadores intercambian su lugar.</p>
+
+      <div class="admin-search-wrap">
+        <input type="text" id="admin-players-search" placeholder="🔍 Buscar jugador por nombre..." aria-label="Buscar jugador por nombre">
+      </div>
+
+      <output id="admin-players-feedback" class="form-feedback"></output>
+
+      <div id="admin-players-list" class="admin-players-grid"></div>
+    </div>
   </div>
+</dialog>
+
+<!-- Modal edición de jugador (Admin) -->
+<dialog id="dlg-admin-player" aria-labelledby="admin-player-title">
+  <div class="modal-hdr"><h3 id="admin-player-title">Editar jugador</h3><button type="button" class="btn-close" id="admin-player-close" aria-label="Cerrar">✕</button></div>
+  <div class="pre" id="admin-player-pre"></div>
+  <input type="file" id="admin-player-file" accept="image/*" aria-label="Foto del jugador" hidden>
+  <button class="b no" id="admin-player-fb" type="button">📷 Foto</button>
+  <input type="text" id="admin-player-inp" maxlength="20" placeholder="Nombre del jugador" aria-label="Nombre del jugador">
+  <label id="admin-player-lbl-pos" for="admin-player-mv" style="font-size:11px;color:#999;letter-spacing:1px">POSICIÓN</label>
+  <select id="admin-player-mv" aria-label="Posición del jugador"></select>
+  <output id="admin-player-error" class="form-feedback"></output>
+  <button type="button" class="b ok" id="admin-player-save">Guardar</button>
+  <button class="b no" id="admin-player-cls">✕ Cerrar</button>
 </dialog>
 <output id="toast" class="toast" aria-live="polite" hidden></output>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>

@@ -49,7 +49,29 @@ async function runDatabaseTests(){
     await rpc('admin_delete_chat_message',{msg_id:chatId,admin_pass:'centenarioutn412'},tokenB);
     assert.equal((await db.query('select count(*)::int as n from chat_messages where id=$1',[chatId])).rows[0].n,0,'Admin deleted chat message');
     await assert.rejects(()=>rpc('save_centenario_bet',bet,''),/Acceso inválido/);
-    console.log('Database: migrations, ownership, atomic moves, captain, IDs, bets, rollback and chat passed.');
+
+    // El admin puede renombrar y mover un jugador ajeno sin ser su dueño.
+    await rpc('save_centenario_player',{
+      source_team:1,source_pos:2,target_team:1,target_pos:2,player_name:'Jugador de B',player_photo:null,captain:false
+    },tokenB);
+    await assert.rejects(()=>rpc('admin_save_centenario_player',{
+      admin_pass:'incorrecta',source_team:1,source_pos:2,target_team:1,target_pos:2,player_name:'Hackeado',player_photo:null,captain:false
+    },tokenA),/Contraseña de administrador incorrecta/);
+    await rpc('admin_save_centenario_player',{
+      admin_pass:'centenarioutn412',source_team:1,source_pos:2,target_team:1,target_pos:2,player_name:'Renombrado por admin',player_photo:null,captain:false
+    },tokenA);
+    let afterRename=(await db.query('select * from players where team=1 and pos=2')).rows[0];
+    assert.equal(afterRename.name,'Renombrado por admin');
+    assert.equal(afterRename.owner,hash(tokenB),'Admin rename keeps original owner');
+    await rpc('admin_save_centenario_player',{
+      admin_pass:'centenarioutn412',source_team:1,source_pos:2,target_team:1,target_pos:3,player_name:'Movido por admin',player_photo:null,captain:false
+    },tokenA);
+    assert.equal((await db.query('select name from players where team=1 and pos=2')).rows[0].name,'','Admin move releases source slot');
+    const afterMove=(await db.query('select * from players where team=1 and pos=3')).rows[0];
+    assert.equal(afterMove.name,'Movido por admin');
+    assert.equal(afterMove.owner,hash(tokenB),'Admin move keeps original owner');
+
+    console.log('Database: migrations, ownership, atomic moves, captain, IDs, bets, rollback, chat and admin edits passed.');
   }finally{await db.close()}
 }
 module.exports=runDatabaseTests;

@@ -1127,5 +1127,20 @@ dialog input[type=text],dialog select{font-family:inherit;font-size:14px;backgro
 .admin-msg-body{font-size:13px;color:#d8e4cf;overflow-wrap:anywhere;line-height:1.45}
 .btn-msg-del{background:#2a1717;border:1px solid #5a2828;color:#ff9e9e;font-size:11px;font-weight:600;padding:6px 10px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex-shrink:0}
 .btn-msg-del:hover{background:#3d1f1f;border-color:#7f3636;color:#ffb8b8}
+.admin-tabs{display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid #2e3e2b;padding-bottom:10px}
+.admin-tab{background:none;border:1px solid transparent;color:#9eb096;font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:7px;cursor:pointer}
+.admin-tab:hover{background:#182317;color:#d8e4cf}
+.admin-tab.on{background:#1c2b18;border-color:#38522d;color:var(--gold)}
+.admin-players-grid{max-height:440px;overflow-y:auto;display:flex;flex-direction:column;gap:9px;padding-right:4px}
+.admin-player-card{display:flex;align-items:center;gap:11px;background:#182317;border:1px solid #2d3d2a;border-radius:9px;padding:10px 13px;cursor:pointer}
+.admin-player-card:hover{border-color:#4e703f;background:#1d2b1a}
+.admin-player-av{width:38px;height:38px;border-radius:50%;background:#243621 center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#bfd3b4;flex-shrink:0}
+.admin-player-info{flex:1;min-width:0}
+.admin-player-name{font-size:13px;font-weight:700;color:#e8f0df;overflow-wrap:anywhere}
+.admin-player-name.e{color:#798c6f;font-weight:600}
+.admin-player-tag{font-size:10px;color:#8ba082;margin-top:2px}
+.admin-player-arrow{color:#6d7f64;flex-shrink:0}
+#dlg-admin-player{background:#182019;border-color:#405634}
+#dlg-admin-player .pre{background-color:#273722;border-width:2px;box-shadow:0 0 0 6px #293c2144;margin:14px auto}
 .chat-item-del-btn{background:#331a1a;border:1px solid #5c2c2c;color:#ff9b9b;font-size:10px;padding:2px 6px;border-radius:4px;cursor:pointer;margin-left:auto}
 .chat-item-del-btn:hover{background:#4d2222;color:#fff}

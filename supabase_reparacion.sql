@@ -50,18 +50,17 @@ begin
   return encode(sha256(convert_to(token,'UTF8')),'hex');
 end $$;
 
-create or replace function public.save_centenario_player(
+create or replace function public._apply_centenario_player_change(
+  req_owner text, is_admin boolean,
   source_team integer, source_pos integer, target_team integer, target_pos integer,
   player_name text, player_photo text, captain boolean default false
 ) returns setof public.players
 language plpgsql security definer set search_path = '' as $$
 declare
-  h text := public.centenario_owner();
   src public.players; dst public.players;
   same_slot boolean := source_team = target_team and source_pos = target_pos;
   new_id uuid;
 begin
-  -- Serializa movimientos y capitanías para evitar intercambios incompletos.
   perform pg_advisory_xact_lock(110433);
   if nullif(trim(player_name),'') is null or char_length(trim(player_name)) > 20 then
     raise exception 'El nombre debe tener entre 1 y 20 caracteres.';
@@ -73,9 +72,11 @@ begin
   if not found then raise exception 'No existe ese lugar. Aplicá la reparación de la base.'; end if;
   select * into dst from public.players where team=target_team and pos=target_pos for update;
   if not found then raise exception 'No existe el lugar de destino.'; end if;
-  if (src.name <> '' and src.owner is not null and src.owner <> h)
-     or (dst.name <> '' and dst.owner is not null and dst.owner <> h) then
-    raise exception 'Ese lugar pertenece a otro acceso. Recuperá el código con el que lo cargaste.';
+  if not is_admin then
+    if (src.name <> '' and src.owner is not null and src.owner <> req_owner)
+       or (dst.name <> '' and dst.owner is not null and dst.owner <> req_owner) then
+      raise exception 'Ese lugar pertenece a otro acceso. Recuperá el código con el que lo cargaste.';
+    end if;
   end if;
   if (source_team=2 or target_team=2) and not same_slot then
     raise exception 'El árbitro no se puede intercambiar con un jugador.';
@@ -83,7 +84,7 @@ begin
   new_id := coalesce(src.player_id,gen_random_uuid());
   if not same_slot then
     update public.players set name=dst.name,photo=dst.photo,
-      owner=case when dst.name='' then null else coalesce(dst.owner,h) end,
+      owner=case when is_admin then dst.owner else (case when dst.name='' then null else coalesce(dst.owner,req_owner) end) end,
       player_id=dst.player_id,is_captain=false,updated_at=now()
       where team=source_team and pos=source_pos;
   end if;
@@ -91,10 +92,42 @@ begin
     update public.players set is_captain=false,updated_at=now()
       where team=target_team and is_captain=true;
   end if;
-  update public.players set name=trim(player_name),photo=player_photo,owner=h,
+  update public.players set name=trim(player_name),photo=player_photo,
+    owner=case when is_admin then coalesce(src.owner,dst.owner) else req_owner end,
     player_id=new_id,is_captain=(captain and target_team <> 2),updated_at=now()
     where team=target_team and pos=target_pos;
   return query select * from public.players order by team,pos;
+end $$;
+
+create or replace function public.save_centenario_player(
+  source_team integer, source_pos integer, target_team integer, target_pos integer,
+  player_name text, player_photo text, captain boolean default false
+) returns setof public.players
+language plpgsql security definer set search_path = '' as $$
+begin
+  return query select * from public._apply_centenario_player_change(
+    public.centenario_owner(), false,
+    source_team, source_pos, target_team, target_pos,
+    player_name, player_photo, captain
+  );
+end $$;
+
+-- Variante administrativa: igual que save_centenario_player pero valida la
+-- contraseña de admin en vez del dueño, para poder mover/renombrar cualquier lugar.
+create or replace function public.admin_save_centenario_player(
+  admin_pass text, source_team integer, source_pos integer, target_team integer, target_pos integer,
+  player_name text, player_photo text, captain boolean default false
+) returns setof public.players
+language plpgsql security definer set search_path = '' as $$
+begin
+  if admin_pass <> 'centenarioutn412' then
+    raise exception 'Contraseña de administrador incorrecta';
+  end if;
+  return query select * from public._apply_centenario_player_change(
+    null, true,
+    source_team, source_pos, target_team, target_pos,
+    player_name, player_photo, captain
+  );
 end $$;
 
 create or replace function public.save_centenario_bet(
@@ -182,10 +215,13 @@ begin
   return true;
 end $$;
 
+revoke all on function public._apply_centenario_player_change(text,boolean,integer,integer,integer,integer,text,text,boolean) from public;
 revoke all on function public.save_centenario_player(integer,integer,integer,integer,text,text,boolean) from public;
+revoke all on function public.admin_save_centenario_player(text,integer,integer,integer,integer,text,text,boolean) from public;
 revoke all on function public.save_centenario_bet(uuid,text,text,text,text,text,integer) from public;
 revoke all on function public.admin_delete_chat_message(uuid,text) from public;
 grant execute on function public.save_centenario_player(integer,integer,integer,integer,text,text,boolean) to anon;
+grant execute on function public.admin_save_centenario_player(text,integer,integer,integer,integer,text,text,boolean) to anon;
 grant execute on function public.save_centenario_bet(uuid,text,text,text,text,text,integer) to anon;
 grant execute on function public.admin_delete_chat_message(uuid,text) to anon;
 
